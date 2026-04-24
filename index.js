@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 });
 app.post("/api/habits", async (req, res) => {
   try {
-    const {title,color,repeatMode, days,reminder,notificationId} = req.body;
+    const {title,color,repeatMode, days,reminder,notificationId,deviceId} = req.body;
 
     const newHabit = new Habit({
         title,
@@ -38,6 +38,7 @@ app.post("/api/habits", async (req, res) => {
         days,
         reminder,
         notificationId,
+        deviceId,
     })
 
      const savedHabit = await newHabit.save();
@@ -60,9 +61,11 @@ app.get("/api/habits", async (req, res) => {
 
 app.get("/habitslist", async (req, res) => {
   try {
-    const allhabits = await Habit.find();
+    const { deviceId } = req.query;
+    const allhabits = await Habit.find({deviceId});
     res.status(200).json(allhabits);
   } catch (error) {
+    console.log("fetch error",error);
     res.status(500).json({ error: "network error" });
   }
 });
