@@ -22,6 +22,10 @@ const habitSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
+    deviceId: {
+        type: String,
+        default: null,
+    },
     completed: {
         type: Object,
         default: {},
