@@ -26,10 +26,6 @@ const habitSchema = new mongoose.Schema({
         type: String,
         default: null,
     },
-    days: {
-        type: Array,
-        default: [],
-    },
     completed: {
         type: Object,
         default: {},
