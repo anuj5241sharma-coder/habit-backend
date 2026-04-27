@@ -171,42 +171,41 @@ app.get("/habits/:id", async (req, res) => {
   }
 });
 
+// end point of leaderboared
 app.get("/leaderboard", async (req, res) => {
   try {
-    console.log("Leaderboard endpoint hit");
 
-    const habits = await Habit.find();
-
-    let totalXP = 0;
-
-    habits.forEach(habit => {
-      if (habit.markedDates) {
-        Object.values(habit.markedDates).forEach(value => {
-          if (value === true) {
-            totalXP += 10;
-          }
-        });
-      }
-    });
-
-    console.log("Calculated XP:", totalXP);
-
-    res.json([
+    const leaderboardData = await Habit.aggregate([
       {
-        _id: "1",
-        name: "You",
-        weeklyXP: totalXP
+        $group: {
+          _id: "$deviceId",
+          totalXP: {
+            $sum: {
+              $size: {
+                $objectToArray: "$markedDates"
+              }
+            }
+          }
+        }
       }
     ]);
 
+    // Convert XP points (each completion = 10 XP)
+    const formatted = leaderboardData.map((user, index) => ({
+      _id: user._id,
+      name: settings.username,
+      weeklyXP: user.totalXP * 10
+    }));
+
+    res.json(formatted);
+
   } catch (error) {
-    console.log("Error fetching leaderboard", error);
+    console.log("Leaderboard error:", error);
     res.status(500).json({ error: "network error" });
   }
 });
 
-// DELETE ALL HABITS
-// ✅ FIRST
+// Reset ALL HABITS
 app.delete("/habits/reset", async (req, res) => {
   try {
     await Habit.deleteMany({});
