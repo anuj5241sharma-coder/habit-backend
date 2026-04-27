@@ -7,7 +7,7 @@ const habitSchema = new mongoose.Schema({
     },
     color: {
         type: String,
-        required: true,
+        default: "#38BDF8",
     },
     repeatMode: {
         type: String,
@@ -17,6 +17,10 @@ const habitSchema = new mongoose.Schema({
     reminder: {
         type: Boolean,
         default: true,
+    },
+    days: {
+        type: Array,
+        default: [],
     },
     notificationId: {
         type: String,
