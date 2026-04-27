@@ -3,16 +3,16 @@ const mongoose = require("mongoose");
 const habitSchema = new mongoose.Schema({
     title: {
         type: String,
-        require: true,
+        required: true,
     },
     color: {
         type: String,
-        require: true,
+        required: true,
     },
     repeatMode: {
         type: String,
         default: "Daily",
-        require: true,
+        required: true,
     },
     reminder: {
         type: Boolean,
@@ -25,6 +25,10 @@ const habitSchema = new mongoose.Schema({
     deviceId: {
         type: String,
         default: null,
+    },
+    days: {
+        type: Array,
+        default: [],
     },
     completed: {
         type: Object,
