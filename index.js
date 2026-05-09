@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-mongoose.connect("mongodb+srv://ashish:ashish@cluster0.mbafvbs.mongodb.net/").then(() => {
+mongoose.connect(process.env.PORT).then(() => {
   console.log("Connected to MongoDB");
 }).catch((error) => {
   console.error("MongoDB connection error:", error);
