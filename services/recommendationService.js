@@ -2,18 +2,16 @@ const axios = require("axios");
 
 async function getRecommendation(activity, history) {
   try {
-    const response = await axios.post(
-      "http://localhost:8001/recommend",
-      {
-        activity,
-        history
-      }
-    );
+    const response = await axios.post("http://localhost:8001/recommend", {
+      activity,
+      history,
+    });
 
     return response.data;
   } catch (error) {
-    console.error("Python service error:", error.message);
+    console.error("Python service error:", error.response?.data || error.message);
+    return null;
   }
 }
 
-module.exports = { getRecommendation };
+module.exports = { getRecommendation }; 
