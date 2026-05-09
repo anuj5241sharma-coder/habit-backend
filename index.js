@@ -1,48 +1,52 @@
 const express = require('express');
 const mongoose = require("mongoose");
 const User = require("./models/User");
+const { getRecommendation } = require("./services/recommendationService");
 
-const app=express();
-const port=process.env.PORT||3000;
-const cors= require("cors");
+const app = express();
+const port = process.env.PORT || 3000;
+const cors = require("cors");
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-mongoose.connect(process.env.MONGO_URI).then(() => {
+mongoose.connect("mongodb+srv://ashish:ashish@cluster0.mbafvbs.mongodb.net/").then(() => {
   console.log("Connected to MongoDB");
 }).catch((error) => {
   console.error("MongoDB connection error:", error);
 });
 
-app.listen(port,"0.0.0.0", () => {
+app.listen(port, "0.0.0.0", () => {
   console.log("Server is running on port 3000");
 });
 
 
-const Habit = require("./models/habit")  
+const Habit = require("./models/habit")
 
 //end points to create a habit in the backend
 app.use((req, res, next) => {
-  console.log("incoming request:",req.method, req.url);
+  console.log("incoming request:", req.method, req.url);
   next();
 });
+
+// create habit end point
 app.post("/api/habits", async (req, res) => {
   try {
-    const {title,color,repeatMode, days,reminder,notificationId,deviceId} = req.body;
+    const { title, color, repeatMode, days, reminder, notificationId, deviceId, reminderTime } = req.body;
 
     const newHabit = new Habit({
-        title,
-        color,
-        repeatMode,
-        days,
-        reminder,
-        notificationId,
-        deviceId,
+      title,
+      color,
+      repeatMode,
+      days,
+      reminder,
+      notificationId,
+      deviceId,
+      reminderTime,
     })
 
-     const savedHabit = await newHabit.save();
-     res.status(200).json(savedHabit);
+    const savedHabit = await newHabit.save();
+    res.status(200).json(savedHabit);
 
   } catch (error) {
     console.log("error creating habit", error);
@@ -50,6 +54,7 @@ app.post("/api/habits", async (req, res) => {
   }
 });
 
+// get all habits end point
 app.get("/api/habits", async (req, res) => {
   try {
     const habits = await Habit.find();
@@ -59,13 +64,15 @@ app.get("/api/habits", async (req, res) => {
   }
 });
 
+// get habits by device id end point
 app.get("/habitslist", async (req, res) => {
+
   try {
     const { deviceId } = req.query;
-    const allhabits = await Habit.find({deviceId});
+    const allhabits = await Habit.find({ deviceId });
     res.status(200).json(allhabits);
   } catch (error) {
-    console.log("fetch error",error);
+    console.log("fetch error", error);
     res.status(500).json({ error: "network error" });
   }
 });
@@ -88,6 +95,22 @@ app.put("/habits/:habitId/completed", async (req, res) => {
     res.status(500).json({ error: "network error" });
   }
 });
+
+//reset data end point
+app.delete("/habits/reset", async (req, res) => {
+  try {
+    const { deviceId } = req.query;
+    await Habit.deleteMany({ deviceId });
+    res.status(200).json({
+      success: true,
+      message: "All habits deleted",
+    });
+  } catch (error) {
+    console.log("Reset error:", error);
+    res.status(500).json({ error: "Failed to reset habits" });
+  }
+});
+
 // delete habit end point
 app.delete("/habits/:habitId", async (req, res) => {
   try {
@@ -98,7 +121,7 @@ app.delete("/habits/:habitId", async (req, res) => {
     res.status(500).json({ error: "network error" });
   }
 });
- 
+
 // update habit end point
 app.put("/habits/:habitId", async (req, res) => {
   try {
@@ -119,8 +142,8 @@ app.put("/habits/:habitId", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Network error" });
   }
-}); 
- 
+});
+
 // archive habit end point
 app.put("/habits/:habitId/archive", async (req, res) => {
   try {
@@ -139,39 +162,93 @@ app.put("/habits/:habitId/archive", async (req, res) => {
 });
 
 // mark date end point
-app.post("/habits/:habitId/mark",async (req, res) =>{
-  try{
-    const{ habitId } = req.params;
-    const{ date } = req.body;
+app.post("/habits/:habitId/mark", async (req, res) => {
+  try {
+    const { habitId } = req.params;
+    const { date } = req.body;
     const updateHabit = await Habit.findById(habitId);
 
-    if(!updateHabit)return res.status(404).json({message:"habit not found"});
+    if (!updateHabit) return res.status(404).json({ message: "habit not found" });
 
-    updateHabit.markedDates=updateHabit.markedDates||{};
-    updateHabit.markedDates[date]=true;
+    updateHabit.markedDates = updateHabit.markedDates || {};
+    updateHabit.markedDates[date] = true;
     await updateHabit.save();
-    res.json({success:true,markedDates:updateHabit.markedDates});
+    res.json({ success: true, markedDates: updateHabit.markedDates });
 
     console.log("Marking date:", date);
 
   }
-  catch(error){
-    console.log("error marking date",error);
-    res.status(500).json({message:"Server error"});
+  catch (error) {
+    console.log("error marking date", error);
+    res.status(500).json({ message: "Server error" });
   }
-});  
+});
 
+// get recommendations end point
+app.get("/habits/recommendations", async (req, res) => {
+  try {
+    const { deviceId } = req.query;
+
+    console.log("Recommendation endpoint hit for deviceId:", deviceId);
+    const habits = await Habit.find({
+      deviceId,
+      $or: [
+        { archived: false },
+        { archived: { $exists: false } }
+      ]
+    });
+
+    const results = [];
+
+    for (const habit of habits) {
+      const history = Object.entries(habit.completed || {}).map(
+        ([date, status]) => ({
+          date,
+          time: habit.reminderTime || "20:00",
+          status: status === true ? "completed" : "skipped",
+        })
+      );
+
+      if (history.length === 0) {
+        results.push({
+          habitId: habit._id,
+          title: habit.title,
+          recommendation: {
+            best_time: habit.reminderTime || "20:00",
+            motivation: `Start ${habit.title} today. Small steps build strong habits.`,
+          },
+        });
+        continue;
+      }
+
+      const recommendation = await getRecommendation(habit.title, history);
+
+      results.push({
+        habitId: habit._id,
+        title: habit.title,
+        recommendation: recommendation || {
+          best_time: habit.reminderTime || "20:00",
+          motivation: "Keep building your habit streak!"
+        },
+      });
+    }
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.log("Recommendation route error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // get habit by id end point
 app.get("/habits/:id", async (req, res) => {
   try {
     const habit = await Habit.findById(req.params.id);
     res.status(200).json(habit);
   } catch (error) {
-    res.status(500).json({ error: "network error" });
+    console.log("Habit by ID error:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
-
-// end point of leaderboared
 
 app.get("/leaderboard", async (req, res) => {
   try {
@@ -204,18 +281,5 @@ app.get("/leaderboard", async (req, res) => {
   } catch (error) {
     console.log("Error fetching leaderboard", error);
     res.status(500).json({ error: "network error" });
-  }
-});
-// Reset ALL HABITS
-app.delete("/habits/reset", async (req, res) => {
-  try {
-    await Habit.deleteMany({});
-    res.status(200).json({
-      success: true,
-      message: "All habits deleted",
-    });
-  } catch (error) {
-    console.log("Reset error:", error);
-    res.status(500).json({ error: "Failed to reset habits" });
   }
 });
