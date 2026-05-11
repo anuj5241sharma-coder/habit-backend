@@ -84,7 +84,16 @@ app.put("/habits/:habitId/completed", async (req, res) => {
   try {
     const updatedHabit = await Habit.findByIdAndUpdate(
       habitId,
-      { completed: updatedCompletion },
+      {
+        completed: updatedCompletion,
+
+        $push: {
+          completedHistory: {
+            completedAt: new Date(),
+            status: "completed",
+          },
+        },
+      },
       { new: true }
     );
     if (!updatedHabit) {
@@ -201,13 +210,10 @@ app.get("/habits/recommendations", async (req, res) => {
     const results = [];
 
     for (const habit of habits) {
-      const history = Object.entries(habit.completed || {}).map(
-        ([date, status]) => ({
-          date,
-          time: habit.reminderTime || "20:00",
-          status: status === true ? "completed" : "skipped",
-        })
-      );
+      const history = (habit.completedHistory || []).map(item => ({
+        time: new Date(item.completedAt).toTimeString().slice(0, 5),
+        status: item.status,
+      }));
 
       if (history.length === 0) {
         results.push({
