@@ -34,6 +34,19 @@ const habitSchema = new mongoose.Schema({
         type: Object,
         default: {},
     },
+    completedHistory: [
+        {
+            completedAt: {
+                type: Date,
+                default: Date.now,
+            },
+
+            status: {
+                type: String,
+                default: "completed",
+            }
+        }
+    ],
     createAt: {
         type: Date,
         default: Date.now
